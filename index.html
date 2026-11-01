@@ -81,6 +81,7 @@ input{width:100%;padding:10px;border:1px solid var(--line);border-radius:8px;bac
     <button class="go" id="go" type="button">Elegir otro</button>
     <a class="btn sec" id="open" href="#" target="_blank" rel="noopener">Abrir en Spotify</a>
   </div>
+  <p class="status" id="hint" hidden>¿No se abrió la aplicación? <a id="webLink" href="#" target="_blank" rel="noopener">Abrir en el navegador</a></p>
 
   <section class="card" id="syncCard">
     <h2>Biblioteca</h2>
@@ -127,7 +128,8 @@ if(cached){try{const c=JSON.parse(cached);if(c.items&&c.items.length){DATA=c.ite
 
 /* ---------- selector ---------- */
 const disc=$('disc'),go=$('go');
-let cur=-1,hist=[],busy=false;
+let cur=-1,hist=[],busy=false,curId=null;
+function albumId(u){const m=/album[\/:](\w+)/.exec(u||'');return m?m[1]:null}
 function link(u){
   if(!u)return null;
   if(u.startsWith('https://'))return u;
@@ -138,6 +140,7 @@ function show(i){
   $('n').textContent='N.º '+fmt.format(i+1)+' de '+fmt.format(DATA.length);
   $('album').textContent=album;$('artist').textContent=artist;
   $('cover').style.backgroundImage=img?'url("'+img+'")':'';
+  curId=albumId(uri);$('hint').hidden=true;
   const a=$('open'),h=link(uri);
   if(h){a.href=h;a.removeAttribute('aria-disabled')}else{a.removeAttribute('href');a.setAttribute('aria-disabled','true')}
 }
@@ -161,6 +164,23 @@ function pick(){
     if(t>=1000){clearInterval(iv);finish(target)}},70);
 }
 go.addEventListener('click',pick);
+
+/* Abrir en la app de Spotify y reproducir. El sufijo :play es de la app de escritorio. */
+$('open').addEventListener('click',e=>{
+  if(!curId)return;
+  e.preventDefault();
+  const id=curId,web='https://open.spotify.com/album/'+id;
+  let left=false;
+  const mark=()=>{left=true};
+  window.addEventListener('blur',mark,{once:true});
+  const vis=()=>{if(document.hidden)mark()};
+  document.addEventListener('visibilitychange',vis);
+  location.href='spotify:album:'+id+':play';
+  setTimeout(()=>{
+    window.removeEventListener('blur',mark);document.removeEventListener('visibilitychange',vis);
+    if(!left&&id===curId){$('webLink').href=web;$('hint').hidden=false}
+  },2000);
+});
 function refreshUI(){
   $('count').textContent=fmt.format(DATA.length)+' álbumes guardados';
   $('source').textContent=source;
